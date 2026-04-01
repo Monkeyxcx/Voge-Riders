@@ -1,9 +1,9 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
-import type { ReactNode } from "react";
-import { LogIn, LogOut, Wrench, Bike, Shield, Home } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/features/auth/useAuthStore";
 import Button from "@/components/ui/Button";
+import { useAuthStore } from "@/features/auth/useAuthStore";
+import { cn } from "@/lib/utils";
+import { Bike, Home, LogIn, LogOut, Shield, Wrench } from "lucide-react";
+import type { ReactNode } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const status = useAuthStore((s) => s.status);
@@ -23,7 +23,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="h-8 w-8 rounded-lg bg-[#FF3D2E]" />
             <div className="leading-tight">
               <div className="text-sm font-semibold">Grupo Voge</div>
-              <div className="text-[11px] text-zinc-400">Modelos, fallas y talleres</div>
+              <div className="text-[11px] text-zinc-400">Modelos, catalogo, talleres, convenios, fallas, etc</div>
             </div>
           </Link>
 

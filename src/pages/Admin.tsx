@@ -14,16 +14,20 @@ import {
   listModels,
   listSolutionsByIssueIds,
 } from "@/features/models/modelsRepo";
+import { listWorkshops } from "@/features/workshops/workshopsRepo";
 import {
   createIssue,
   createModel,
   createSolution,
+  createWorkshop,
   deleteIssueCascade,
   deleteModelCascade,
+  deleteWorkshop,
   deleteSolution,
   updateIssue,
   updateModel,
   updateSolution,
+  updateWorkshop,
 } from "@/features/admin/adminRepo";
 import { buildModelImageObjectPath, deleteObject, uploadPublicImage } from "@/features/media/mediaRepo";
 import { updateModelImage } from "@/features/models/modelsRepo";
@@ -34,12 +38,43 @@ export default function Admin() {
   const qc = useQueryClient();
   const [sp, setSp] = useSearchParams();
   const selectedModelId = sp.get("model") ?? "";
+  const selectedWorkshopId = sp.get("workshop") ?? "";
   const [q, setQ] = useState("");
   const [createForm, setCreateForm] = useState({ name: "", slug: "", type: "", cc: "", year: "" });
   const [editForm, setEditForm] = useState({ id: "", name: "", slug: "", type: "", cc: "", year: "" });
   const [error, setError] = useState<string | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
   const [tab, setTab] = useState<"contenido" | "usuarios">("contenido");
+  const [contentView, setContentView] = useState<"modelos" | "talleres">("modelos");
+
+  const [wq, setWq] = useState("");
+  const [wcity, setWcity] = useState("");
+  const [wtag, setWtag] = useState("");
+  const [wCreate, setWCreate] = useState({
+    name: "",
+    city: "",
+    address: "",
+    contact: "",
+    tags: "",
+    notes: "",
+    mapsQuery: "",
+    mapsUrl: "",
+  });
+  const [wEdit, setWEdit] = useState({
+    id: "",
+    name: "",
+    city: "",
+    address: "",
+    contact: "",
+    tags: "",
+    notes: "",
+    mapsQuery: "",
+    mapsUrl: "",
+  });
+
+  useEffect(() => {
+    if (!auth.isAdmin) setContentView("modelos");
+  }, [auth.isAdmin]);
 
   const modelsQuery = useQuery({
     queryKey: ["admin", "models", { q }],
@@ -49,6 +84,38 @@ export default function Admin() {
 
   const models = useMemo(() => modelsQuery.data ?? [], [modelsQuery.data]);
   const selectedModel = useMemo(() => models.find((m) => m.id === selectedModelId) ?? null, [models, selectedModelId]);
+
+  const workshopsQuery = useQuery({
+    queryKey: ["admin", "workshops", { q: wq, city: wcity, tag: wtag }],
+    enabled: auth.status === "authenticated" && auth.isAdmin && tab === "contenido" && contentView === "talleres",
+    queryFn: () =>
+      listWorkshops({
+        q: wq.trim() || undefined,
+        city: wcity.trim() || undefined,
+        tag: wtag.trim() || undefined,
+      }),
+  });
+
+  const workshops = useMemo(() => workshopsQuery.data ?? [], [workshopsQuery.data]);
+  const selectedWorkshop = useMemo(
+    () => workshops.find((w) => w.id === selectedWorkshopId) ?? null,
+    [workshops, selectedWorkshopId]
+  );
+
+  useEffect(() => {
+    if (!selectedWorkshop) return;
+    setWEdit({
+      id: selectedWorkshop.id,
+      name: selectedWorkshop.name,
+      city: selectedWorkshop.city ?? "",
+      address: selectedWorkshop.address ?? "",
+      contact: selectedWorkshop.contact ?? "",
+      tags: selectedWorkshop.tags ?? "",
+      notes: selectedWorkshop.notes ?? "",
+      mapsQuery: selectedWorkshop.maps_query ?? "",
+      mapsUrl: selectedWorkshop.maps_url ?? "",
+    });
+  }, [selectedWorkshop]);
 
   useEffect(() => {
     if (!selectedModel) return;
@@ -186,6 +253,75 @@ export default function Admin() {
     },
   });
 
+  const createWorkshopMutation = useMutation({
+    mutationFn: async () => {
+      const name = wCreate.name.trim();
+      if (!name) throw new Error("El nombre es requerido.");
+      return createWorkshop({
+        name,
+        city: wCreate.city.trim() || null,
+        address: wCreate.address.trim() || null,
+        contact: wCreate.contact.trim() || null,
+        tags: wCreate.tags.trim() || null,
+        notes: wCreate.notes.trim() || null,
+        mapsQuery: wCreate.mapsQuery.trim() || null,
+        mapsUrl: wCreate.mapsUrl.trim() || null,
+      });
+    },
+    onSuccess: (w) => {
+      setError(null);
+      setWCreate({ name: "", city: "", address: "", contact: "", tags: "", notes: "", mapsQuery: "", mapsUrl: "" });
+      qc.invalidateQueries({ queryKey: ["admin", "workshops"] });
+      const next = new URLSearchParams(sp);
+      next.set("workshop", w.id);
+      setSp(next);
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "No se pudo crear el taller."),
+  });
+
+  const updateWorkshopMutation = useMutation({
+    mutationFn: async () => {
+      const name = wEdit.name.trim();
+      if (!wEdit.id) throw new Error("Selecciona un taller.");
+      if (!name) throw new Error("El nombre es requerido.");
+      return updateWorkshop({
+        id: wEdit.id,
+        name,
+        city: wEdit.city.trim() || null,
+        address: wEdit.address.trim() || null,
+        contact: wEdit.contact.trim() || null,
+        tags: wEdit.tags.trim() || null,
+        notes: wEdit.notes.trim() || null,
+        mapsQuery: wEdit.mapsQuery.trim() || null,
+        mapsUrl: wEdit.mapsUrl.trim() || null,
+      });
+    },
+    onSuccess: () => {
+      setError(null);
+      qc.invalidateQueries({ queryKey: ["admin", "workshops"] });
+      qc.invalidateQueries({ queryKey: ["workshops"] });
+      qc.invalidateQueries({ queryKey: ["workshop"] });
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "No se pudo guardar el taller."),
+  });
+
+  const deleteWorkshopMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedWorkshopId) throw new Error("Selecciona un taller.");
+      await deleteWorkshop(selectedWorkshopId);
+    },
+    onSuccess: () => {
+      setError(null);
+      const next = new URLSearchParams(sp);
+      next.delete("workshop");
+      setSp(next);
+      qc.invalidateQueries({ queryKey: ["admin", "workshops"] });
+      qc.invalidateQueries({ queryKey: ["workshops"] });
+      qc.invalidateQueries({ queryKey: ["workshop"] });
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "No se pudo eliminar el taller."),
+  });
+
   const solutionsByIssue = useMemo(() => {
     const map = new Map<string, IssueSolution[]>();
     for (const s of solutionsQuery.data ?? []) {
@@ -287,168 +423,355 @@ export default function Admin() {
       ) : null}
 
       {tab !== "contenido" ? null : (
-
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <div className="space-y-4">
-          <Card className="p-5">
-            <div className="mt-3">
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busca por nombre…" />
-            </div>
-            {modelsQuery.isLoading ? <div className="mt-3 text-xs text-zinc-400">Cargando…</div> : null}
-            {modelsQuery.error instanceof Error ? <div className="mt-3 text-xs text-red-400">{modelsQuery.error.message}</div> : null}
-            <div className="mt-4 space-y-2">
-              {models.map((m) => (
-                <button
-                  type="button"
-                  key={m.id}
-                  onClick={() => {
-                    const next = new URLSearchParams(sp);
-                    next.set("model", m.id);
-                    setSp(next);
-                  }}
-                  className={
-                    "w-full text-left rounded-lg border px-3 py-2 text-sm transition " +
-                    (m.id === selectedModelId
-                      ? "border-[#FF3D2E] bg-[#FF3D2E]/10"
-                      : "border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/40")
-                  }
-                >
-                  <div className="font-medium truncate">{m.name}</div>
-                  <div className="mt-1 text-xs text-zinc-500 truncate">{m.slug}</div>
-                </button>
-              ))}
-            </div>
-          </Card>
-
           {auth.isAdmin ? (
-            <Card className="p-5">
-              <div className="text-sm font-semibold">Crear modelo</div>
-              <div className="mt-3 grid gap-3">
-                <Input value={createForm.name} onChange={(e) => setCreateForm((s) => ({ ...s, name: e.target.value }))} placeholder="Nombre" />
-                <Input value={createForm.slug} onChange={(e) => setCreateForm((s) => ({ ...s, slug: e.target.value }))} placeholder="Slug (voge-500ds)" />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Input value={createForm.type} onChange={(e) => setCreateForm((s) => ({ ...s, type: e.target.value }))} placeholder="Tipo" />
-                  <Input value={createForm.cc} onChange={(e) => setCreateForm((s) => ({ ...s, cc: e.target.value }))} placeholder="CC" />
-                </div>
-                <Input value={createForm.year} onChange={(e) => setCreateForm((s) => ({ ...s, year: e.target.value }))} placeholder="Año" />
-                <Button disabled={createModelMutation.isPending} onClick={() => createModelMutation.mutate()}>
-                  {createModelMutation.isPending ? "Creando…" : "Crear"}
-                </Button>
-                {error ? <div className="text-xs text-red-400">{error}</div> : null}
-              </div>
-            </Card>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant={contentView === "modelos" ? "primary" : "secondary"} onClick={() => setContentView("modelos")}>
+                Modelos
+              </Button>
+              <Button variant={contentView === "talleres" ? "primary" : "secondary"} onClick={() => setContentView("talleres")}>
+                Talleres
+              </Button>
+            </div>
           ) : null}
-        </div>
 
-        <div className="space-y-4">
-          {!selectedModel ? (
-            <Card className="p-6">
-              <div className="text-sm text-zinc-400">Selecciona un modelo para editar.</div>
-            </Card>
-          ) : (
-            <>
-              {auth.isAdmin ? (
-              <Card className="p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">Editar modelo</div>
-                    <div className="mt-1 text-xs text-zinc-500 truncate">{selectedModel.id}</div>
+          {contentView === "modelos" ? (
+            <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+              <div className="space-y-4">
+                <Card className="p-5">
+                  <div className="mt-3">
+                    <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busca por nombre…" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        window.open(`/modelos/${selectedModel.slug}`, "_blank");
-                      }}
-                    >
-                      Ver ficha
-                    </Button>
-                    <Button
-                      variant="danger"
-                      disabled={deleteModelMutation.isPending}
-                      onClick={() => {
-                        if (!window.confirm("¿Eliminar modelo y sus fallas/soluciones?")) return;
-                        deleteModelMutation.mutate();
-                      }}
-                    >
-                      Eliminar
-                    </Button>
+                  {modelsQuery.isLoading ? <div className="mt-3 text-xs text-zinc-400">Cargando…</div> : null}
+                  {modelsQuery.error instanceof Error ? (
+                    <div className="mt-3 text-xs text-red-400">{modelsQuery.error.message}</div>
+                  ) : null}
+                  <div className="mt-4 space-y-2">
+                    {models.map((m) => (
+                      <button
+                        type="button"
+                        key={m.id}
+                        onClick={() => {
+                          const next = new URLSearchParams(sp);
+                          next.set("model", m.id);
+                          setSp(next);
+                        }}
+                        className={
+                          "w-full text-left rounded-lg border px-3 py-2 text-sm transition " +
+                          (m.id === selectedModelId
+                            ? "border-[#FF3D2E] bg-[#FF3D2E]/10"
+                            : "border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/40")
+                        }
+                      >
+                        <div className="font-medium truncate">{m.name}</div>
+                        <div className="mt-1 text-xs text-zinc-500 truncate">{m.slug}</div>
+                      </button>
+                    ))}
                   </div>
-                </div>
+                </Card>
 
-                <div className="mt-4 grid gap-3">
-                  <Input value={editForm.name} onChange={(e) => setEditForm((s) => ({ ...s, name: e.target.value }))} placeholder="Nombre" />
-                  <Input value={editForm.slug} onChange={(e) => setEditForm((s) => ({ ...s, slug: e.target.value }))} placeholder="Slug" />
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <Input value={editForm.type} onChange={(e) => setEditForm((s) => ({ ...s, type: e.target.value }))} placeholder="Tipo" />
-                    <Input value={editForm.cc} onChange={(e) => setEditForm((s) => ({ ...s, cc: e.target.value }))} placeholder="CC" />
-                    <Input value={editForm.year} onChange={(e) => setEditForm((s) => ({ ...s, year: e.target.value }))} placeholder="Año" />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Button disabled={updateModelMutation.isPending} onClick={() => updateModelMutation.mutate()}>
-                      {updateModelMutation.isPending ? "Guardando…" : "Guardar"}
-                    </Button>
+                {auth.isAdmin ? (
+                  <Card className="p-5">
+                    <div className="text-sm font-semibold">Crear modelo</div>
+                    <div className="mt-3 grid gap-3">
+                      <Input
+                        value={createForm.name}
+                        onChange={(e) => setCreateForm((s) => ({ ...s, name: e.target.value }))}
+                        placeholder="Nombre"
+                      />
+                      <Input
+                        value={createForm.slug}
+                        onChange={(e) => setCreateForm((s) => ({ ...s, slug: e.target.value }))}
+                        placeholder="Slug (voge-500ds)"
+                      />
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Input
+                          value={createForm.type}
+                          onChange={(e) => setCreateForm((s) => ({ ...s, type: e.target.value }))}
+                          placeholder="Tipo"
+                        />
+                        <Input
+                          value={createForm.cc}
+                          onChange={(e) => setCreateForm((s) => ({ ...s, cc: e.target.value }))}
+                          placeholder="CC"
+                        />
+                      </div>
+                      <Input
+                        value={createForm.year}
+                        onChange={(e) => setCreateForm((s) => ({ ...s, year: e.target.value }))}
+                        placeholder="Año"
+                      />
+                      <Button disabled={createModelMutation.isPending} onClick={() => createModelMutation.mutate()}>
+                        {createModelMutation.isPending ? "Creando…" : "Crear"}
+                      </Button>
+                      {error ? <div className="text-xs text-red-400">{error}</div> : null}
+                    </div>
+                  </Card>
+                ) : null}
+              </div>
 
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      id="admin-model-cover"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        uploadCoverMutation.mutate(file);
-                        e.currentTarget.value = "";
-                      }}
+              <div className="space-y-4">
+                {!selectedModel ? (
+                  <Card className="p-6">
+                    <div className="text-sm text-zinc-400">Selecciona un modelo para editar.</div>
+                  </Card>
+                ) : (
+                  <>
+                    {auth.isAdmin ? (
+                      <Card className="p-5">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold truncate">Editar modelo</div>
+                            <div className="mt-1 text-xs text-zinc-500 truncate">{selectedModel.id}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                window.open(`/modelos/${selectedModel.slug}`, "_blank");
+                              }}
+                            >
+                              Ver ficha
+                            </Button>
+                            <Button
+                              variant="danger"
+                              disabled={deleteModelMutation.isPending}
+                              onClick={() => {
+                                if (!window.confirm("¿Eliminar modelo y sus fallas/soluciones?")) return;
+                                deleteModelMutation.mutate();
+                              }}
+                            >
+                              Eliminar
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3">
+                          <Input
+                            value={editForm.name}
+                            onChange={(e) => setEditForm((s) => ({ ...s, name: e.target.value }))}
+                            placeholder="Nombre"
+                          />
+                          <Input
+                            value={editForm.slug}
+                            onChange={(e) => setEditForm((s) => ({ ...s, slug: e.target.value }))}
+                            placeholder="Slug"
+                          />
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <Input
+                              value={editForm.type}
+                              onChange={(e) => setEditForm((s) => ({ ...s, type: e.target.value }))}
+                              placeholder="Tipo"
+                            />
+                            <Input
+                              value={editForm.cc}
+                              onChange={(e) => setEditForm((s) => ({ ...s, cc: e.target.value }))}
+                              placeholder="CC"
+                            />
+                            <Input
+                              value={editForm.year}
+                              onChange={(e) => setEditForm((s) => ({ ...s, year: e.target.value }))}
+                              placeholder="Año"
+                            />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <Button disabled={updateModelMutation.isPending} onClick={() => updateModelMutation.mutate()}>
+                              {updateModelMutation.isPending ? "Guardando…" : "Guardar"}
+                            </Button>
+
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              id="admin-model-cover"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                uploadCoverMutation.mutate(file);
+                                e.currentTarget.value = "";
+                              }}
+                            />
+                            <Button
+                              variant="secondary"
+                              disabled={uploadCoverMutation.isPending}
+                              onClick={() => {
+                                document.getElementById("admin-model-cover")?.click();
+                              }}
+                            >
+                              {uploadCoverMutation.isPending
+                                ? "Subiendo…"
+                                : selectedModel.image_url
+                                  ? "Cambiar foto"
+                                  : "Subir foto"}
+                            </Button>
+
+                            {coverError ? <div className="text-xs text-red-400">{coverError}</div> : null}
+                            {error ? <div className="text-xs text-red-400">{error}</div> : null}
+                          </div>
+                        </div>
+                      </Card>
+                    ) : (
+                      <Card className="p-5">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold truncate">Modelo seleccionado</div>
+                            <div className="mt-1 text-xs text-zinc-500 truncate">{selectedModel.name}</div>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              window.open(`/modelos/${selectedModel.slug}`, "_blank");
+                            }}
+                          >
+                            Ver ficha
+                          </Button>
+                        </div>
+                        <div className="mt-3 text-xs text-zinc-500">
+                          Como editor no puedes modificar datos del modelo ni su foto principal.
+                        </div>
+                      </Card>
+                    )}
+
+                    <AdminIssues
+                      model={selectedModel}
+                      issues={issuesQuery.data ?? []}
+                      solutionsByIssue={solutionsByIssue}
+                      imagesByIssue={imagesByIssue}
+                      loading={issuesQuery.isLoading}
+                      issuesError={issuesQuery.error instanceof Error ? issuesQuery.error.message : null}
+                      canDelete={auth.isAdmin}
                     />
-                    <Button
-                      variant="secondary"
-                      disabled={uploadCoverMutation.isPending}
-                      onClick={() => {
-                        document.getElementById("admin-model-cover")?.click();
-                      }}
-                    >
-                      {uploadCoverMutation.isPending ? "Subiendo…" : selectedModel.image_url ? "Cambiar foto" : "Subir foto"}
-                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : auth.isAdmin ? (
+            <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+              <div className="space-y-4">
+                <Card className="p-5">
+                  <div className="text-sm font-semibold">Buscar talleres</div>
+                  <div className="mt-3 grid gap-3">
+                    <Input value={wq} onChange={(e) => setWq(e.target.value)} placeholder="Nombre…" />
+                    <Input value={wcity} onChange={(e) => setWcity(e.target.value)} placeholder="Ciudad / zona…" />
+                    <Input value={wtag} onChange={(e) => setWtag(e.target.value)} placeholder="Etiqueta…" />
+                  </div>
+                  {workshopsQuery.isLoading ? <div className="mt-3 text-xs text-zinc-400">Cargando…</div> : null}
+                  {workshopsQuery.error instanceof Error ? (
+                    <div className="mt-3 text-xs text-red-400">{workshopsQuery.error.message}</div>
+                  ) : null}
+                  <div className="mt-4 space-y-2">
+                    {workshops.map((w) => (
+                      <button
+                        type="button"
+                        key={w.id}
+                        onClick={() => {
+                          const next = new URLSearchParams(sp);
+                          next.set("workshop", w.id);
+                          setSp(next);
+                        }}
+                        className={
+                          "w-full text-left rounded-lg border px-3 py-2 text-sm transition " +
+                          (w.id === selectedWorkshopId
+                            ? "border-[#FF3D2E] bg-[#FF3D2E]/10"
+                            : "border-zinc-800 bg-zinc-900/20 hover:bg-zinc-900/40")
+                        }
+                      >
+                        <div className="font-medium truncate">{w.name}</div>
+                        <div className="mt-1 text-xs text-zinc-500 truncate">{w.city ?? ""}</div>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
 
-                    {coverError ? <div className="text-xs text-red-400">{coverError}</div> : null}
+                <Card className="p-5">
+                  <div className="text-sm font-semibold">Crear taller</div>
+                  <div className="mt-3 grid gap-3">
+                    <Input value={wCreate.name} onChange={(e) => setWCreate((s) => ({ ...s, name: e.target.value }))} placeholder="Nombre" />
+                    <Input value={wCreate.city} onChange={(e) => setWCreate((s) => ({ ...s, city: e.target.value }))} placeholder="Ciudad" />
+                    <Input value={wCreate.address} onChange={(e) => setWCreate((s) => ({ ...s, address: e.target.value }))} placeholder="Dirección" />
+                    <Input value={wCreate.contact} onChange={(e) => setWCreate((s) => ({ ...s, contact: e.target.value }))} placeholder="Contacto" />
+                    <Input value={wCreate.tags} onChange={(e) => setWCreate((s) => ({ ...s, tags: e.target.value }))} placeholder="Tags (coma)" />
+                    <Textarea value={wCreate.notes} onChange={(e) => setWCreate((s) => ({ ...s, notes: e.target.value }))} placeholder="Notas" />
+                    <Input
+                      value={wCreate.mapsQuery}
+                      onChange={(e) => setWCreate((s) => ({ ...s, mapsQuery: e.target.value }))}
+                      placeholder="Mapa: búsqueda (ej. 'MotoLab Medellín')"
+                    />
+                    <Input
+                      value={wCreate.mapsUrl}
+                      onChange={(e) => setWCreate((s) => ({ ...s, mapsUrl: e.target.value }))}
+                      placeholder="Mapa: URL (opcional)"
+                    />
+                    <Button disabled={createWorkshopMutation.isPending} onClick={() => createWorkshopMutation.mutate()}>
+                      {createWorkshopMutation.isPending ? "Creando…" : "Crear"}
+                    </Button>
                     {error ? <div className="text-xs text-red-400">{error}</div> : null}
                   </div>
-                </div>
-              </Card>
-              ) : (
-                <Card className="p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold truncate">Modelo seleccionado</div>
-                      <div className="mt-1 text-xs text-zinc-500 truncate">{selectedModel.name}</div>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        window.open(`/modelos/${selectedModel.slug}`, "_blank");
-                      }}
-                    >
-                      Ver ficha
-                    </Button>
-                  </div>
-                  <div className="mt-3 text-xs text-zinc-500">Como editor no puedes modificar datos del modelo ni su foto principal.</div>
                 </Card>
-              )}
+              </div>
 
-              <AdminIssues
-                model={selectedModel}
-                issues={issuesQuery.data ?? []}
-                solutionsByIssue={solutionsByIssue}
-                imagesByIssue={imagesByIssue}
-                loading={issuesQuery.isLoading}
-                issuesError={issuesQuery.error instanceof Error ? issuesQuery.error.message : null}
-                canDelete={auth.isAdmin}
-              />
-            </>
-          )}
+              <div className="space-y-4">
+                {!selectedWorkshop ? (
+                  <Card className="p-6">
+                    <div className="text-sm text-zinc-400">Selecciona un taller para editar.</div>
+                  </Card>
+                ) : (
+                  <Card className="p-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold truncate">Editar taller</div>
+                        <div className="mt-1 text-xs text-zinc-500 truncate">{selectedWorkshop.id}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            window.open(`/talleres/${selectedWorkshop.id}`, "_blank");
+                          }}
+                        >
+                          Ver ficha
+                        </Button>
+                        <Button
+                          variant="danger"
+                          disabled={deleteWorkshopMutation.isPending}
+                          onClick={() => {
+                            if (!window.confirm("¿Eliminar taller?")) return;
+                            deleteWorkshopMutation.mutate();
+                          }}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3">
+                      <Input value={wEdit.name} onChange={(e) => setWEdit((s) => ({ ...s, name: e.target.value }))} placeholder="Nombre" />
+                      <Input value={wEdit.city} onChange={(e) => setWEdit((s) => ({ ...s, city: e.target.value }))} placeholder="Ciudad" />
+                      <Input value={wEdit.address} onChange={(e) => setWEdit((s) => ({ ...s, address: e.target.value }))} placeholder="Dirección" />
+                      <Input value={wEdit.contact} onChange={(e) => setWEdit((s) => ({ ...s, contact: e.target.value }))} placeholder="Contacto" />
+                      <Input value={wEdit.tags} onChange={(e) => setWEdit((s) => ({ ...s, tags: e.target.value }))} placeholder="Tags (coma)" />
+                      <Textarea value={wEdit.notes} onChange={(e) => setWEdit((s) => ({ ...s, notes: e.target.value }))} placeholder="Notas" />
+                      <Input
+                        value={wEdit.mapsQuery}
+                        onChange={(e) => setWEdit((s) => ({ ...s, mapsQuery: e.target.value }))}
+                        placeholder="Mapa: búsqueda"
+                      />
+                      <Input
+                        value={wEdit.mapsUrl}
+                        onChange={(e) => setWEdit((s) => ({ ...s, mapsUrl: e.target.value }))}
+                        placeholder="Mapa: URL (opcional)"
+                      />
+                      <Button disabled={updateWorkshopMutation.isPending} onClick={() => updateWorkshopMutation.mutate()}>
+                        {updateWorkshopMutation.isPending ? "Guardando…" : "Guardar"}
+                      </Button>
+                      {error ? <div className="text-xs text-red-400">{error}</div> : null}
+                    </div>
+                  </Card>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
-      </div>
       )}
     </div>
   );

@@ -4,7 +4,7 @@ import type { Workshop } from "@/types/domain";
 export async function listWorkshops(params: { q?: string; city?: string; tag?: string }) {
   let query = supabase
     .from("workshops")
-    .select("id, name, city, address, contact, tags, notes")
+    .select("id, name, city, address, contact, tags, notes, maps_query, maps_url")
     .order("name");
 
   if (params.city) query = query.ilike("city", `%${params.city}%`);
@@ -19,10 +19,9 @@ export async function listWorkshops(params: { q?: string; city?: string; tag?: s
 export async function getWorkshopById(id: string) {
   const { data, error } = await supabase
     .from("workshops")
-    .select("id, name, city, address, contact, tags, notes")
+    .select("id, name, city, address, contact, tags, notes, maps_query, maps_url")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
   return (data ?? null) as Workshop | null;
 }
-

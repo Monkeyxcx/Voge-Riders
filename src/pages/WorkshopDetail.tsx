@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import Card from "@/components/ui/Card";
 import { getWorkshopById } from "@/features/workshops/workshopsRepo";
 import CommentsSection from "@/features/comments/CommentsSection";
+import { buildGoogleMapsEmbedUrl, buildGoogleMapsSearchUrl } from "@/features/maps/maps";
 
 export default function WorkshopDetail() {
   const { id } = useParams();
@@ -28,6 +29,9 @@ export default function WorkshopDetail() {
 
   const w = workshopQuery.data;
   const tags = parseTags(w.tags);
+  const mapQuery = w.maps_query ?? [w.name, w.address, w.city].filter(Boolean).join(" - ");
+  const embedUrl = buildGoogleMapsEmbedUrl(mapQuery);
+  const openUrl = w.maps_url || buildGoogleMapsSearchUrl(mapQuery);
 
   return (
     <div className="space-y-6">
@@ -81,6 +85,31 @@ export default function WorkshopDetail() {
             ) : null}
           </Card>
 
+          {embedUrl ? (
+            <Card className="p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold">Ubicación</div>
+                  <div className="mt-1 text-xs text-zinc-400">Vista previa en Google Maps</div>
+                </div>
+                {openUrl ? (
+                  <a href={openUrl} target="_blank" rel="noreferrer" className="text-xs text-zinc-300 hover:text-white">
+                    Abrir →
+                  </a>
+                ) : null}
+              </div>
+              <div className="mt-4 overflow-hidden rounded-xl border border-zinc-800">
+                <iframe
+                  title={`Mapa ${w.name}`}
+                  src={embedUrl}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="h-[260px] w-full"
+                />
+              </div>
+            </Card>
+          ) : null}
+
           <CommentsSection entityType="workshop" entityId={w.id} />
         </div>
 
@@ -106,4 +135,3 @@ function parseTags(tags: string | null) {
     .map((t) => t.trim())
     .filter(Boolean);
 }
-

@@ -41,6 +41,8 @@ export type Workshop = {
   contact: string | null;
   tags: string | null;
   notes: string | null;
+  maps_query: string | null;
+  maps_url: string | null;
 };
 
 export type CommentEntityType = "model" | "issue" | "workshop";

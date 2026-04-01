@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { listWorkshops } from "@/features/workshops/workshopsRepo";
+import { buildGoogleMapsEmbedUrl, buildGoogleMapsSearchUrl } from "@/features/maps/maps";
 
 export default function Workshops() {
   const [sp, setSp] = useSearchParams();
@@ -86,6 +87,30 @@ export default function Workshops() {
             to={`/talleres/${w.id}`}
             className="rounded-xl border border-[#223042] bg-[#121826] p-5 hover:brightness-110 transition"
           >
+            {(() => {
+              const mapQuery = w.maps_query ?? [w.name, w.address, w.city].filter(Boolean).join(" - ");
+              const embedUrl = buildGoogleMapsEmbedUrl(mapQuery);
+              const openUrl = w.maps_url || buildGoogleMapsSearchUrl(mapQuery);
+              if (!embedUrl) return null;
+              return (
+                <div className="relative mb-4 overflow-hidden rounded-lg border border-zinc-800">
+                  <div className="pointer-events-none">
+                    <iframe
+                      title={`Mapa ${w.name}`}
+                      src={embedUrl}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="h-36 w-full"
+                    />
+                  </div>
+                  {openUrl ? (
+                    <div className="absolute bottom-2 right-2 rounded-md border border-zinc-700 bg-zinc-950/70 px-2 py-1 text-[11px] text-zinc-200">
+                      Vista previa
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })()}
             <div className="text-sm font-semibold truncate">{w.name}</div>
             <div className="mt-2 text-xs text-zinc-400">
               {w.city ? <div className="truncate">{w.city}</div> : null}
@@ -113,4 +138,3 @@ function parseTags(tags: string | null) {
     .map((t) => t.trim())
     .filter(Boolean);
 }
-

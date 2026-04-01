@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { IssueSolution, ModelIssue, MotoModel } from "@/types/domain";
+import type { IssueSolution, ModelIssue, MotoModel, Workshop } from "@/types/domain";
 
 export async function createModel(input: {
   slug: string;
@@ -119,5 +119,68 @@ export async function updateSolution(input: { id: string; steps: string; parts?:
 
 export async function deleteSolution(id: string) {
   const { error } = await supabase.from("issue_solutions").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function createWorkshop(input: {
+  name: string;
+  city?: string | null;
+  address?: string | null;
+  contact?: string | null;
+  tags?: string | null;
+  notes?: string | null;
+  mapsQuery?: string | null;
+  mapsUrl?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("workshops")
+    .insert({
+      name: input.name,
+      city: input.city ?? null,
+      address: input.address ?? null,
+      contact: input.contact ?? null,
+      tags: input.tags ?? null,
+      notes: input.notes ?? null,
+      maps_query: input.mapsQuery ?? null,
+      maps_url: input.mapsUrl ?? null,
+    })
+    .select("id, name, city, address, contact, tags, notes, maps_query, maps_url")
+    .single();
+  if (error) throw error;
+  return data as Workshop;
+}
+
+export async function updateWorkshop(input: {
+  id: string;
+  name: string;
+  city?: string | null;
+  address?: string | null;
+  contact?: string | null;
+  tags?: string | null;
+  notes?: string | null;
+  mapsQuery?: string | null;
+  mapsUrl?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from("workshops")
+    .update({
+      name: input.name,
+      city: input.city ?? null,
+      address: input.address ?? null,
+      contact: input.contact ?? null,
+      tags: input.tags ?? null,
+      notes: input.notes ?? null,
+      maps_query: input.mapsQuery ?? null,
+      maps_url: input.mapsUrl ?? null,
+    })
+    .eq("id", input.id)
+    .select("id, name, city, address, contact, tags, notes, maps_query, maps_url")
+    .single();
+  if (error) throw error;
+  return data as Workshop;
+}
+
+export async function deleteWorkshop(id: string) {
+  const { error } = await supabase.from("workshops").delete().eq("id", id);
   if (error) throw error;
 }
