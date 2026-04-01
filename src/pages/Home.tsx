@@ -11,6 +11,43 @@ export default function Home() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
 
+  const communityLinks = useMemo(
+    () =>
+      [
+        {
+          title: "✅ Centro de servicio autorizado Voge (Talleres)",
+          url: "https://docs.google.com/spreadsheets/d/1b5wHzYYcZTHSzL5dJl9VusW8m4mVOJFwWwzLK0RLCco",
+          description: "Listado de centros de servicio autorizados.",
+        },
+        {
+          title: "🇨🇴 Convenios Voge Bikers Colombia",
+          url: "https://docs.google.com/spreadsheets/d/1yECTwydfpq2hLZGxp_PAknCdVyBX3etwNttOOuNU0dk/edit?usp=drivesdk",
+          description: "Beneficios y convenios para el grupo.",
+        },
+        {
+          title: "✅ Catálogo de partes VOGE (300 DS, 300 AC, 300 RALLY)",
+          url: "https://drive.google.com/drive/folders/1JyvHbpZjoJLM_nC9UHbt7gp5XbHK11Cp",
+          description: "Carpeta con catálogos por modelo.",
+        },
+        {
+          title: "✅ Repuestos Homologables VOGE ⚙️ 🔧",
+          url: "https://docs.google.com/spreadsheets/d/1drIas7ppGRTc33vLHamIYUdyAJK4IQ73KBQXakzc54U/edit?usp=drivesdk",
+          description: "Equivalencias y repuestos recomendados.",
+        },
+        {
+          title: "✅ Manual de usuario VOGE (300 DS, 300 AC, 300 RALLY)",
+          url: "https://drive.google.com/drive/folders/1KShmswNBuu4Xjq6aJzuu0SDryxMQ9gnQ",
+          description: "Manuales de usuario en PDF.",
+        },
+        {
+          title: "📍 Sitios de interés Voge Medellín",
+          url: "https://maps.app.goo.gl/dRuxu6iFNWnLB6Uz7?g_st=ac",
+          description: "Mapa con sitios recomendados.",
+        },
+      ] as const,
+    []
+  );
+
   const recentIssuesQuery = useQuery({
     queryKey: ["home", "recentIssues"],
     queryFn: async () => {
@@ -91,6 +128,29 @@ export default function Home() {
               <div className="text-sm font-medium">Talleres</div>
               <div className="mt-1 text-xs text-zinc-400">Dónde llevar tu moto con confianza</div>
             </Link>
+          </div>
+        </Card>
+      </section>
+
+      <section>
+        <Card className="p-6">
+          <div className="text-xs text-zinc-400">Comunidad Voge Medellín🇨🇴</div>
+          <div className="mt-2 text-sm font-semibold">Recursos del grupo</div>
+          <div className="mt-1 text-xs text-zinc-500">Enlaces externos a hojas de cálculo, catálogos y manuales.</div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {communityLinks.map((l) => (
+              <a
+                key={l.url}
+                href={l.url}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-4 hover:bg-zinc-900/40 transition"
+              >
+                <div className="text-sm font-medium">{l.title}</div>
+                <div className="mt-1 text-xs text-zinc-400">{l.description}</div>
+                <div className="mt-3 text-xs text-zinc-500 truncate">{l.url}</div>
+              </a>
+            ))}
           </div>
         </Card>
       </section>
