@@ -144,11 +144,11 @@ export default function Home() {
                 href={l.url}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-4 hover:bg-zinc-900/40 transition"
+                className="rounded-xl border border-zinc-800 bg-zinc-900/20 p-4 hover:bg-zinc-900/40 transition min-w-0"
               >
                 <div className="text-sm font-medium">{l.title}</div>
                 <div className="mt-1 text-xs text-zinc-400">{l.description}</div>
-                <div className="mt-3 text-xs text-zinc-500 truncate">{l.url}</div>
+                <div className="mt-3 text-xs text-zinc-500 break-all line-clamp-2">{l.url}</div>
               </a>
             ))}
           </div>
