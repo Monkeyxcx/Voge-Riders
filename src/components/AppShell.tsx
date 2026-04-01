@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
-import { LogIn, LogOut, Wrench, Bike, Shield } from "lucide-react";
+import { LogIn, LogOut, Wrench, Bike, Shield, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/features/auth/useAuthStore";
 import Button from "@/components/ui/Button";
@@ -19,7 +19,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-[#0B0F14] text-zinc-100">
       <header className="sticky top-0 z-50 border-b border-zinc-900 bg-[#0B0F14]/80 backdrop-blur">
         <div className="mx-auto max-w-[1200px] px-6 py-4 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/modelos" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-[#FF3D2E]" />
             <div className="leading-tight">
               <div className="text-sm font-semibold">Grupo Voge</div>
@@ -28,6 +28,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden md:flex items-center gap-2">
+            <NavLink
+              to="/inicio"
+              className={({ isActive }) =>
+                cn(navLinkBase, isActive ? "bg-zinc-900/60 text-white" : "text-zinc-300 hover:bg-zinc-900/40")
+              }
+            >
+              <Home className="h-4 w-4" />
+              Inicio
+            </NavLink>
             <NavLink
               to="/modelos"
               className={({ isActive }) =>
@@ -69,7 +78,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   variant="secondary"
                   onClick={() =>
                     signOut()
-                      .then(() => navigate("/"))
+                      .then(() => navigate("/modelos"))
                       .catch(() => {})
                   }
                 >

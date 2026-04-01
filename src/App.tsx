@@ -15,7 +15,8 @@ export default function App() {
     <Router>
       <AppShell>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/modelos" replace />} />
+          <Route path="/inicio" element={<Home />} />
           <Route path="/modelos" element={<Models />} />
           <Route path="/modelos/:slug" element={<ModelDetail />} />
           <Route path="/talleres" element={<Workshops />} />
@@ -24,7 +25,7 @@ export default function App() {
           <Route path="/registro" element={<Register />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin" element={<Admin />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/modelos" replace />} />
         </Routes>
       </AppShell>
     </Router>

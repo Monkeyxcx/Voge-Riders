@@ -25,7 +25,7 @@ export default function Login() {
     setBusy(true);
     try {
       await signIn(email.trim(), password);
-      navigate("/");
+      navigate("/modelos");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error al iniciar sesión");
     } finally {
@@ -59,8 +59,8 @@ export default function Login() {
       <Card className="max-w-md mx-auto p-6">
         <div className="text-sm text-zinc-200">Ya tienes sesión iniciada.</div>
         <div className="mt-4">
-          <Link to="/" className="text-sm text-zinc-200 hover:text-white">
-            Ir al inicio
+          <Link to="/modelos" className="text-sm text-zinc-200 hover:text-white">
+            Ir a modelos
           </Link>
         </div>
       </Card>
